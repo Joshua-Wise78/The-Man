@@ -34,7 +34,6 @@ class TheMan(commands.Bot):
 
         await self.tree.sync()
 
-
 if __name__ == "__main__":
     bot = TheMan()
     bot.run(TOKEN)
