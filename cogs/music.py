@@ -16,6 +16,7 @@ class Music(commands.Cog):
         print(f"Lavalink Node connected: {payload.node.identifier}")
 
     @app_commands.command(name="play", description="Enter url to play music.")
+    @app_commands.guild_only()
     async def play(self, interaction: discord.Interaction, search: str):
         if not interaction.user.voice:
             return await interaction.response.send_message("You need to be in a voice channel to use this command.")
@@ -30,12 +31,33 @@ class Music(commands.Cog):
 
         tracks: wavelink.Search = await wavelink.Playable.search(search)
         if not tracks:
-            return await interaction.followup.send(f"Sorry can not find results for: {search}")
+            return await interaction.followup.send(f"Sorry, could not find results for: `{search}`")
 
-        track = tracks[0]
-        await vc.play(track)
+        if isinstance(tracks, wavelink.Playlist):
+            added: int = vc.queue.extend(tracks)
+            await interaction.followup.send(f"📃 Added the playlist **{tracks.name}** ({added} songs) to the queue!")
+        else:
+            track = tracks[0]
+            vc.queue.put(track)
+            await interaction.followup.send(f"🎵 Added **{track.title}** to the queue!")
 
-        await interaction.followup.send(f"Playing: **{track.title}**")
+        if not vc.is_playing():
+            await vc.play(vc.queue.get())
+
+    @app_commands.command(name="skip", description="Skips the currently playing song.")
+    @app_commands.guild_only()
+    async def skip(self, interaction: discord.Interaction):
+        vc: wavelink.Player = interaction.guild.voice_client
+
+        if not vc or not vc.connected:
+            return await interaction.response.send_message("I'm not currently in a voice channel!")
+
+        if not vc.is_playing():
+            return await interaction.response.send_message("There is nothing playing right now to skip!")
+
+        await vc.skip(force=True)
+        
+        await interaction.response.send_message("⏭️ Skipped the current song! Moving to the next one in queue...")
 
     @app_commands.command(name="stop", description="Stop playing whatever music.")
     async def stop(self, interaction: discord.Interaction):
