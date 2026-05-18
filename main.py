@@ -32,6 +32,8 @@ class TheMan(commands.Bot):
             except Exception as e:
                 print(f"Failed to load extension {ext}: {e}")
 
+        await self.tree.sync()
+
 
 if __name__ == "__main__":
     bot = TheMan()

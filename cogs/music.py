@@ -16,34 +16,36 @@ class Music(commands.Cog):
         print(f"Lavalink Node connected: {payload.node.identifier}")
 
     @app_commands.command(name="play", description="Enter url to play music.")
-    async def play(self, ctx: commands.Context, *, search: str):
-        if not ctx.author.voice:
-            return await ctx.send("You need to be in a voice channel to use this command.")
+    async def play(self, interaction: discord.Interaction, search: str):
+        if not interaction.user.voice:
+            return await interaction.response.send_message("You need to be in a voice channel to use this command.")
+
+        await interaction.response.defer()
 
         vc: wavelink.Player
-        if not ctx.voice_client:
-            vc = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+        if not interaction.guild.voice_client:
+            vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
         else:
-            vc = ctx.voice_client
+            vc = interaction.guild.voice_client
 
         tracks: wavelink.Search = await wavelink.Playable.search(search)
         if not tracks:
-            return await ctx.send(f"Sorry can not find results for: {search}")
+            return await interaction.followup.send(f"Sorry can not find results for: {search}")
 
         track = tracks[0]
         await vc.play(track)
 
-        await ctx.send(f"Playing: **{track.title}**")
+        await interaction.followup.send(f"Playing: **{track.title}**")
 
     @app_commands.command(name="stop", description="Stop playing whatever music.")
-    async def stop(self, ctx: commands.Context):
+    async def stop(self, interaction: discord.Interaction):
         """Stops the music and disconnects the bot."""
-        vc: wavelink.Player = ctx.voice_client
+        vc: wavelink.Player = interaction.guild.voice_client
         if vc:
             await vc.disconnect()
-            await ctx.send("Disconnected from voice and cleared the queue.")
+            await interaction.response.send_message("Disconnected from voice and cleared the queue.")
         else:
-            await ctx.send("I'm not currently in a voice channel.")
+            await interaction.response.send_message("I'm not currently in a voice channel.")
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
