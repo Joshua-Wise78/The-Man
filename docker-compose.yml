@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:latest
+    container_name: lavalink
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx1G 
+      - SERVER_PORT=2333
+      - LAVALINK_SERVER_PASSWORD=youshallnotpass
+    ports:
+      - "2333:2333"
+
+  bot:
+    build: .
+    container_name: discord_music_bot
+    restart: unless-stopped
+    depends_on:
+      - lavalink
+    env_file:
+      - .env

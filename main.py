@@ -21,6 +21,7 @@ class TheMan(commands.Bot):
         inital_extensions = [
             "cogs.connection",
             "cogs.commands",
+            "cogs.music"
         ]
 
         for ext in inital_extensions:
