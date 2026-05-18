@@ -34,12 +34,16 @@ class Music(commands.Cog):
             return await interaction.followup.send(f"Sorry, could not find results for: `{search}`")
 
         if isinstance(tracks, wavelink.Playlist):
-            added: int = vc.queue.extend(tracks)
-            await interaction.followup.send(f"📃 Added the playlist **{tracks.name}** ({added} songs) to the queue!")
+            added = 0
+            for track in tracks:
+                vc.queue.put(track)
+                added += 1
+            await interaction.followup.send(f"Added the playlist **{tracks.name}** ({added} songs) to the que.")
+
         else:
             track = tracks[0]
             vc.queue.put(track)
-            await interaction.followup.send(f"🎵 Added **{track.title}** to the queue!")
+            await interaction.followup.send(f"Added: **{track.title}** to the queue!")
 
         if not vc.is_playing():
             await vc.play(vc.queue.get())
