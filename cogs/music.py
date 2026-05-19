@@ -41,7 +41,11 @@ class Music(commands.Cog):
         else:
             vc = interaction.guild.voice_client
 
-        tracks: wavelink.Search = await wavelink.Playable.search(search)
+        try:
+            tracks: wavelink.Search = await wavelink.Playable.search(search)
+        except wavelink.exceptions.LavalinkLoadException:
+            return await interaction.followup.send("❌ Failed to load track. If this is a Spotify link, check your API keys!")
+            
         if not tracks:
             return await interaction.followup.send(f"Sorry, could not find results for: `{search}`")
 
@@ -54,13 +58,13 @@ class Music(commands.Cog):
                 added += 1
                 
             if len(tracks) > max_songs:
-                await interaction.followup.send(f"Playlist too large! Added the first **{added}** songs from **{tracks.name}**.")
+                await interaction.followup.send(f"📃 Playlist too large! Added the first **{added}** songs from **{tracks.name}**.")
             else:
-                await interaction.followup.send(f"Added the playlist **{tracks.name}** ({added} songs) to the queue!")
+                await interaction.followup.send(f"📃 Added the playlist **{tracks.name}** ({added} songs) to the queue!")
         else:
             track = tracks[0]
             vc.queue.put(track)
-            await interaction.followup.send(f"Added **{track.title}** to the queue!")
+            await interaction.followup.send(f"🎵 Added **{track.title}** to the queue!")
 
         if not vc.playing:
             await vc.play(vc.queue.get())
@@ -77,7 +81,7 @@ class Music(commands.Cog):
             return await interaction.response.send_message("There is nothing playing right now to skip!")
 
         await vc.skip(force=True)
-        await interaction.response.send_message("Skipped the current song! Moving to the next one in queue...")
+        await interaction.response.send_message("⏭️ Skipped the current song! Moving to the next one in queue...")
 
     @app_commands.command(name="stop", description="Stop playing whatever music.")
     @app_commands.guild_only()
