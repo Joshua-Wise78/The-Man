@@ -4,20 +4,44 @@ services:
     container_name: lavalink
     restart: unless-stopped
     environment:
-      - _JAVA_OPTIONS=-Xmx4G
+      # Increased RAM to 2GB to handle large playlists safely
+      - _JAVA_OPTIONS=-Xmx2G
       - SERVER_PORT=2333
-      - LAVALINK_SERVER_PASSWORD=youshallnotpass
+      
+      # Pulls the password securely from your .env file
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD}
+      
+      # --- YOUTUBE PLUGIN ---
+      # Disables the broken built-in scraper and uses the updated plugin
       - LAVALINK_SERVER_SOURCES_YOUTUBE=false
       - LAVALINK_PLUGINS_0_REPOSITORY=https://maven.lavalink.dev/releases
       - LAVALINK_PLUGINS_0_DEPENDENCY=dev.lavalink.youtube:youtube-plugin:1.14.0
+      
+      # --- SPOTIFY PLUGIN (LavaSrc) ---
+      # Allows Lavalink to read Spotify URLs and playlists
+      - LAVALINK_PLUGINS_1_REPOSITORY=https://maven.lavalink.dev/releases
+      - LAVALINK_PLUGINS_1_DEPENDENCY=com.github.topi314.lavasrc:lavasrc-plugin:4.3.0
+      - PLUGINS_LAVASRC_PROVIDERS_SPOTIFY=true
+      
+      # Pulls the Spotify keys securely from your .env file
+      - PLUGINS_LAVASRC_SPOTIFY_CLIENTID=${SPOTIFY_CLIENT_ID}
+      - PLUGINS_LAVASRC_SPOTIFY_CLIENTSECRET=${SPOTIFY_CLIENT_SECRET}
     ports:
       - "2333:2333"
+    networks:
+      - bot_network
 
-  bot:
+  discord_music_bot:
     build: .
     container_name: discord_music_bot
     restart: unless-stopped
-    depends_on:
-      - lavalink
     env_file:
       - .env
+    depends_on:
+      - lavalink
+    networks:
+      - bot_network
+
+networks:
+  bot_network:
+    driver: bridge
