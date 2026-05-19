@@ -15,6 +15,18 @@ class Music(commands.Cog):
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
         print(f"Lavalink Node connected: {payload.node.identifier}")
 
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
+        """Fires when a track finishes naturally OR gets skipped."""
+        vc: wavelink.Player = payload.player
+
+        if not vc:
+            return
+
+        if vc.queue:
+            next_track = vc.queue.get()
+            await vc.play(next_track)
+
     @app_commands.command(name="play", description="Enter url to play music.")
     @app_commands.guild_only()
     async def play(self, interaction: discord.Interaction, search: str):
@@ -35,17 +47,22 @@ class Music(commands.Cog):
 
         if isinstance(tracks, wavelink.Playlist):
             added = 0
-            for track in tracks:
+            max_songs = 100  # Set your maximum safe limit here
+            
+            for track in tracks[:max_songs]:
                 vc.queue.put(track)
                 added += 1
-            await interaction.followup.send(f"Added the playlist **{tracks.name}** ({added} songs) to the que.")
-
+                
+            if len(tracks) > max_songs:
+                await interaction.followup.send(f"Playlist too large! Added the first **{added}** songs from **{tracks.name}**.")
+            else:
+                await interaction.followup.send(f"Added the playlist **{tracks.name}** ({added} songs) to the queue!")
         else:
             track = tracks[0]
             vc.queue.put(track)
-            await interaction.followup.send(f"Added: **{track.title}** to the queue!")
+            await interaction.followup.send(f"Added **{track.title}** to the queue!")
 
-        if not vc.is_playing():
+        if not vc.playing:
             await vc.play(vc.queue.get())
 
     @app_commands.command(name="skip", description="Skips the currently playing song.")
@@ -56,14 +73,14 @@ class Music(commands.Cog):
         if not vc or not vc.connected:
             return await interaction.response.send_message("I'm not currently in a voice channel!")
 
-        if not vc.is_playing():
+        if not vc.playing: 
             return await interaction.response.send_message("There is nothing playing right now to skip!")
 
         await vc.skip(force=True)
-        
-        await interaction.response.send_message("⏭️ Skipped the current song! Moving to the next one in queue...")
+        await interaction.response.send_message("Skipped the current song! Moving to the next one in queue...")
 
     @app_commands.command(name="stop", description="Stop playing whatever music.")
+    @app_commands.guild_only()
     async def stop(self, interaction: discord.Interaction):
         """Stops the music and disconnects the bot."""
         vc: wavelink.Player = interaction.guild.voice_client
