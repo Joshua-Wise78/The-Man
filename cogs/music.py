@@ -46,6 +46,30 @@ class Music(commands.Cog):
         else:
             pass
 
+    @commands.Cog.listener()
+    async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
+        """
+           Listener that plays at the start of every new track  
+        """
+
+        vc: wavelink.Player == payload.player
+        if not vc or not hasattr(vc, 'reply_channel'):
+            return
+
+        track = payload.track
+
+        # Create the embed
+        embed = discord.Embed(
+            title="Now Playing",
+            description=f"**[{track.title}]({track.uri})**\nBy {track.author}",
+            color=discord.Color.blurple()
+        )
+
+        # Set the view and send the dashboard
+        view = NowPlayingView(vc)
+        await vc.reply_channel.send(embed=embed, view=view)
+            
+
     @app_commands.command(name="play", description="Enter url to play music.")
     @app_commands.guild_only()
     async def play(self, interaction: discord.Interaction, search: str):
@@ -64,6 +88,7 @@ class Music(commands.Cog):
         vc: wavelink.Player
         if not interaction.guild.voice_client:
             vc = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+            vc.reply_channel = interaction.channel
         else:
             vc = interaction.guild.voice_client
 
@@ -133,6 +158,41 @@ class Music(commands.Cog):
 
         else:
             await interaction.response.send_message("I'm not currently in a voice channel.")
+
+class NowPlayingView(discord.ui.View):
+    def __init__(self, vc: wavelink.Player):
+        super().__init__(timeout=None)
+        self.vc = vc
+
+    @discord.ui.button(label="Pause / Resume", style=discord.ButtonStyle.primary, emoji='⏯️')
+    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """
+           Pause and resume switch button for the discord bot  
+        """
+        if not self.vc:
+            return await interaction.response.send_message("No active player found.", ephemeral=True)
+
+        # Toggle for the pause/resume
+        await self.vc.pause(not self.vc.paused)
+        state = "Paused" if self.vc.paused else "Resumed"
+
+        await interaction.response.send_message(f"{state} the music", empheral=True)
+
+    @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️")
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.vc and self.vc.playing:
+            await self.vc.skip(force=True)
+            await interaction.response.send_message("Track skipped!", ephemeral=True)
+        else:
+            await interaction.response.send_message("Nothing is playing right now.", ephemeral=True)
+
+    @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️")
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.vc:
+            await self.vc.disconnect()
+            await interaction.response.send_message("Disconnected from voice.", ephemeral=True)
+            self.stop()
+
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
