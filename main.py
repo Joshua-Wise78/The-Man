@@ -1,5 +1,6 @@
 import os
 import discord
+import typing
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -18,12 +19,16 @@ class TheMan(commands.Bot):
         )
 
     async def setup_hook(self):
+        """
+           The setup for the different extensions inside of the program
+        """
         inital_extensions = [
             "cogs.connection",
             "cogs.commands",
             "cogs.music"
         ]
 
+        # For loop to go thru the extensions and add them individually
         for ext in inital_extensions:
             try:
                 await self.load_extension(ext)
@@ -31,8 +36,6 @@ class TheMan(commands.Bot):
 
             except Exception as e:
                 print(f"Failed to load extension {ext}: {e}")
-
-        await self.tree.sync()
 
 if __name__ == "__main__":
     bot = TheMan()
