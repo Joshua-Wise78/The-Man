@@ -1,3 +1,4 @@
+import os
 import discord
 import wavelink
 import typing
@@ -52,7 +53,7 @@ class Music(commands.Cog):
            Listener that plays at the start of every new track  
         """
 
-        vc: wavelink.Player == payload.player
+        vc: wavelink.Player = payload.player
         if not vc or not hasattr(vc, 'reply_channel'):
             return
 
@@ -170,13 +171,13 @@ class NowPlayingView(discord.ui.View):
            Pause and resume switch button for the discord bot  
         """
         if not self.vc:
-            return await interaction.response.send_message("No active player found.", ephemeral=True)
+            return await interaction.response.send_message("No active player found.", ephemeral==True)
 
         # Toggle for the pause/resume
         await self.vc.pause(not self.vc.paused)
         state = "Paused" if self.vc.paused else "Resumed"
 
-        await interaction.response.send_message(f"{state} the music", empheral=True)
+        await interaction.response.send_message(f"{state} the music", ephemeral==True)
 
     @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️")
     async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):

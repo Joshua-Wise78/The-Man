@@ -37,6 +37,17 @@ class TheMan(commands.Bot):
             except Exception as e:
                 print(f"Failed to load extension {ext}: {e}")
 
+    @bot.command()
+    async def sync(ctx):
+    """
+       Manually sync commands to discord
+    """
+    try:
+        synced = await bot.tree.sync()
+        await ctx.send(f"Synced {len(synced)} slash commands!")
+    except Exception as e:
+        await ctx.send(f"Failed to sync: {e}")   
+
 if __name__ == "__main__":
     bot = TheMan()
     bot.run(TOKEN)
