@@ -230,6 +230,14 @@ class NowPlayingView(discord.ui.View):
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
+    @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.success, emoji="🔀")
+    async def shuffle(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.vc or self.vc.queue.is_empty:
+            return await interaction.response.send_message("The queue is empty, nothing to shuffle!", ephemeral=True)
+
+        self.vc.queue.shuffle()
+        await interaction.response.send_message("🔀 The queue has been shuffled!", ephemeral=True)
+
     @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️")
     async def stop_music(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.vc:
@@ -325,16 +333,6 @@ class QueuePaginationView(discord.ui.View):
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.page -= 1
         self.update_components()
-        await interaction.response.edit_message(embed=self.generate_embed(), view=self)
-
-    @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.success, emoji="🔀", row=1)
-    async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.vc.queue.shuffle()
-        
-        self.queue_list = list(self.vc.queue)
-        self.page = 0
-        self.update_components()
-        
         await interaction.response.edit_message(embed=self.generate_embed(), view=self)
 
     @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.primary, row=1)
