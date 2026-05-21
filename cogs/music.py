@@ -203,7 +203,7 @@ class NowPlayingView(discord.ui.View):
            Pause and resume switch button for the discord bot  
         """
         if not self.vc:
-            return await interaction.response.send_message("No active player found.", ephemeral==True)
+            return await interaction.response.send_message("No active player found.", ephemeral=True)
 
         # Toggle for the pause/resume
         await self.vc.pause(not self.vc.paused)
@@ -219,7 +219,7 @@ class NowPlayingView(discord.ui.View):
         else:
             await interaction.response.send_message("Nothing is playing right now.", ephemeral=True)
 
-    @discord.ui.button(label="Queue", style=discord.ButtonStyle.seconday, emoji='📜')
+    @discord.ui.button(label="Queue", style=discord.ButtonStyle.secondary, emoji='📜')
     async def show_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not self.vc or (not self.vc.current and self.vc.queue.is_empty):
             return await interaction.response.send_message("The queue is empty.")
@@ -246,20 +246,63 @@ class QueuePaginationView(discord.ui.View):
         self.per_page = 10
         self.max_pages = math.ceil(len(self.queue_list) / self.per_page)
 
-        self.update_buttons()
+        self.select = discord.ui.Select(
+            placeholder="Select a song to play next...", 
+            min_values=1, 
+            max_values=1, 
+            row=0
+        )
+        self.select.callback = self.select_callback
+        self.add_item(self.select)
 
-    def update_buttons(self):
+        self.update_components()
+
+    def update_components(self):
+        """Updates the buttons AND the dropdown options based on the current page."""
         self.previous_button.disabled = self.page == 0
         self.next_button.disabled = self.page >= self.max_pages - 1 or self.max_pages == 0
+
+        start_idx = self.page * self.per_page
+        end_idx = start_idx + self.per_page
+        current_page_songs = self.queue_list[start_idx:end_idx]
+
+        options = []
+        for i, track in enumerate(current_page_songs, start=start_idx):
+            label_text = f"{i + 1}. {track.title}"[:100]
+            options.append(discord.SelectOption(label=label_text, value=str(i)))
+
+        if options:
+            self.select.options = options
+            self.select.disabled = False
+        else:
+            self.select.options = [discord.SelectOption(label="Queue is empty", value="empty")]
+            self.select.disabled = True
+
+    async def select_callback(self, interaction: discord.Interaction):
+        """Fires when a user selects a song from the dropdown."""
+        track_index = int(self.select.values[0])
+        selected_track = self.queue_list[track_index]
+
+        del self.vc.queue[track_index]
+        
+        self.vc.queue.insert(0, selected_track)
+
+        await interaction.response.send_message(f"⏭️ Jumping to **{selected_track.title}**...", ephemeral=True)
+
+        await self.vc.skip(force=True)
+        
+        self.queue_list = list(self.vc.queue)
+        self.max_pages = math.ceil(len(self.queue_list) / self.per_page)
+        self.update_components()
+        await interaction.message.edit(embed=self.generate_embed(), view=self)
+
 
     def generate_embed(self):
         embed = discord.Embed(title="🎵 Current Queue", color=discord.Color.blurple())
         
-        # Only show "Now Playing" on the first page
         if self.vc.current and self.page == 0:
             embed.add_field(name="Now Playing:", value=f"🎶 **{self.vc.current.title}**", inline=False)
 
-        # Calculate which songs to show based on the page number
         start_idx = self.page * self.per_page
         end_idx = start_idx + self.per_page
         current_page_songs = self.queue_list[start_idx:end_idx]
@@ -273,26 +316,32 @@ class QueuePaginationView(discord.ui.View):
         else:
             embed.description = "There are no upcoming songs in the queue."
 
-        # Add a footer to show page numbers
         total_pages = max(1, self.max_pages)
         embed.set_footer(text=f"Page {self.page + 1}/{total_pages} • Total Songs: {len(self.queue_list)}")
         
         return embed
 
-    @discord.ui.button(label="◀ Previous", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="◀ Previous", style=discord.ButtonStyle.primary, row=1)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.page -= 1
-        self.update_buttons()
-
-        # Edit message
+        self.update_components()
         await interaction.response.edit_message(embed=self.generate_embed(), view=self)
 
-    @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.success, emoji="🔀", row=1)
+    async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.vc.queue.shuffle()
+        
+        self.queue_list = list(self.vc.queue)
+        self.page = 0
+        self.update_components()
+        
+        await interaction.response.edit_message(embed=self.generate_embed(), view=self)
+
+    @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.primary, row=1)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.page += 1
-        self.update_buttons()
+        self.update_components()
         await interaction.response.edit_message(embed=self.generate_embed(), view=self)
-
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
