@@ -163,7 +163,7 @@ class Music(commands.Cog):
 
     @app_commands.command(name="queue", description="Shows the interactive music queue.")
     @app_commands.guild_only()
-    async def queue(self, interaction: discord.Interaction):
+    async def queue_music(self, interaction: discord.Interaction):
         """
            Queue command that allows us to view the list of music that is active
            in the order to be played
@@ -209,7 +209,7 @@ class NowPlayingView(discord.ui.View):
         await self.vc.pause(not self.vc.paused)
         state = "Paused" if self.vc.paused else "Resumed"
 
-        await interaction.response.send_message(f"{state} the music", ephemeral==True)
+        await interaction.response.send_message(f"{state} the music", ephemeral=True)
 
     @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️")
     async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -219,14 +219,23 @@ class NowPlayingView(discord.ui.View):
         else:
             await interaction.response.send_message("Nothing is playing right now.", ephemeral=True)
 
+    @discord.ui.button(label="Queue", style=discord.ButtonStyle.seconday, emoji='📜')
+    async def show_queue(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.vc or (not self.vc.current and self.vc.queue.is_empty):
+            return await interaction.response.send_message("The queue is empty.")
+
+        queue_list = list(self.vc.queue)
+        view = QueuePaginationView(self.vc, queue_list)
+        embed = view.generate_embed()
+
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
     @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️")
     async def stop_music(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.vc:
             await self.vc.disconnect()
             await interaction.response.send_message("Disconnected from voice.", ephemeral=True)
             self.stop()
-
-import math # Make sure to add this to the top of music.py
 
 class QueuePaginationView(discord.ui.View):
     def __init__(self, vc: wavelink.Player, queue_list: list):
