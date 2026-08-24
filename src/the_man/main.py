@@ -41,7 +41,7 @@ intents.message_content = True
 intents.members = True
 
 initial_extensions = [
-    "cogs.status"
+    "cogs.status",
     "cogs.route88"
 ]
 
@@ -58,7 +58,8 @@ class TheMan(commands.Bot):
 
     async def on_ready(self) -> None:
         """On ready command."""
-        print(f"Logged in as {self.user} (ID: {self.user.id})")
+        if self.user:
+            print(f"Logged in as {self.user} (ID: {self.user.id})")
 
 async def main() -> None:
     """Intro Main method."""
